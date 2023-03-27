@@ -58,8 +58,8 @@ def tworzenie_pliku_genbank(numer):
     with open(numer + "sequence.gb", "w") as handle:
         SeqIO.write(genbank_record, handle, "genbank")
 
-def translacja_calosc(seq_file):
-    os.chdir("/mnt/archive/Cicuta_serwer/pysz/cpdatabase/genbank")
+def translacja_calosc(seq_file):                                        #Funkcja nie używana, służy do celów sprawdzania pojedynczych plików
+    os.chdir("/mnt/archive/Cicuta_serwer/pysz/cpdatabase/genbank") 
     record = SeqIO.read(seq_file, "genbank")
     my_cds = record.features
     for feature in my_cds:
@@ -72,14 +72,14 @@ def translacja(feature):
     protein = feature.qualifiers['translation']
     return name, protein
 
-def pliki(cala):
+def pliki(cala):                                                        #Pobieranie plików z GenBank (zrobione)
     os.chdir("/mnt/archive/Cicuta_serwer/pysz/cpdatabase/genbank")
     numery = list(cala['Numer'])
     for numer in numery:
         print(f'Tworze plik {numer}')
         tworzenie_pliku_genbank(numer)
 
-def bialka(sciezka):
+def bialka(sciezka):                                                    #Do uzgodnienia z Anią. Pojawiają się błędy związane z nazewnictwem białek
     for i in os.listdir(sciezka):
         if i[-2:] == "gb":
             record = SeqIO.read(i, "genbank")
@@ -110,9 +110,3 @@ def bialka(sciezka):
 #bialka('/mnt/archive/Cicuta_serwer/pysz/cpdatabase/genbank')
 #translacja_cala("sequence.gb")
 
-a = [1,2,3,4,5]
-b = [5,4,3,2,1]
-if a == b:
-    print('listy sie rownaja')
-elif set(a) == set(b):
-    print('sety sie rownaja')
