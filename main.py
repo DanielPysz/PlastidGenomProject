@@ -58,8 +58,8 @@ def tworzenie_pliku_genbank(numer):
     with open(numer + "sequence.gb", "w") as handle:
         SeqIO.write(genbank_record, handle, "genbank")
 
-def translacja_calosc(seq_file):                                        #Funkcja nie używana, służy do celów sprawdzania pojedynczych plików
-    os.chdir("/mnt/archive/Cicuta_serwer/pysz/cpdatabase/genbank") 
+def translacja_calosc(seq_file):
+    os.chdir("/mnt/archive/Cicuta_serwer/pysz/cpdatabase/genbank")
     record = SeqIO.read(seq_file, "genbank")
     my_cds = record.features
     for feature in my_cds:
@@ -70,35 +70,51 @@ def translacja_calosc(seq_file):                                        #Funkcja
 def translacja(feature):
     name = feature.qualifiers['product']
     protein = feature.qualifiers['translation']
-    return name, protein
+    #return name, protein
+    print(feature.qualifiers)
 
-def pliki(cala):                                                        #Pobieranie plików z GenBank (zrobione)
+def pliki(cala):
     os.chdir("/mnt/archive/Cicuta_serwer/pysz/cpdatabase/genbank")
     numery = list(cala['Numer'])
     for numer in numery:
         print(f'Tworze plik {numer}')
         tworzenie_pliku_genbank(numer)
 
-def bialka(sciezka):                                                    #Do uzgodnienia z Anią. Pojawiają się błędy związane z nazewnictwem białek
+def bialka(sciezka):
+    bledy = []
+    os.chdir(sciezka)
     for i in os.listdir(sciezka):
         if i[-2:] == "gb":
             record = SeqIO.read(i, "genbank")
             for feature in record.features:
                 if feature.type == 'CDS':
-                    nazwa = list(feature.qualifiers['product'])[0]
-                    seq = list(feature.qualifiers['translation'])[0]
-                    fasta = str(f'>{nazwa}\n{seq}')
-                    if os.path.isdir(nazwa):
-                        print(f'Katalog {nazwa} istnieje')
-                    else:
-                        print(f'Tworze katalog {nazwa}')
-                        os.makedirs(nazwa)
-                    os.chdir(nazwa)
-                    with open(nazwa, "w") as writer:
-                        writer.write(fasta)
+                    try:
+                        organism = str(record.annotations["organism"])
+                        nazwa = str(list(feature.qualifiers['product'])[0])
+                        seq = list(feature.qualifiers['translation'])[0]
+                        fasta = str(f'>{organism}_{nazwa}\n{seq}')
+                        nazwa = nazwa.replace("/", "_")
+                        if os.path.isdir(nazwa):
+                            print(f'Katalog {nazwa} istnieje')
+                            os.chdir(nazwa)
+                            name = organism+"_"+nazwa
+                            with open(name, "w") as writer:
+                                writer.write(fasta)
+                        else:
+                            print(f'Tworze katalog {nazwa}')
+                            os.makedirs(str(nazwa))
+                            os.chdir(str(nazwa))
+                            name = organism+"_"+nazwa
+                            with open(name, "w") as writer:
+                                writer.write(fasta)
+                    except:
+                        bledy.append(f'Blad w bialku {i} ')
+                        
                     os.chdir("/mnt/archive/Cicuta_serwer/pysz/cpdatabase/genbank")
             print(f'Zakonczono dzialania z plikiem {i}')
-    
+    print(f'Zakonczono dzialania z wszystkimi plikami')
+    print("Lista bledow: ")
+    print(bledy)
 
 #ind_ls1, df1 = read(args.file1)
 #df_n_1, lst_1, index1 = dane(ind_ls1, df1)
@@ -107,6 +123,5 @@ def bialka(sciezka):                                                    #Do uzgo
 #baza = docelowy(df_n_1, df_n_2, lst_1, lst_2, index1, index2)
 #cala = dodanie_df("out.csv", baza)
 #pliki(cala)
-#bialka('/mnt/archive/Cicuta_serwer/pysz/cpdatabase/genbank')
+bialka('/mnt/archive/Cicuta_serwer/pysz/cpdatabase/genbank')
 #translacja_cala("sequence.gb")
-
