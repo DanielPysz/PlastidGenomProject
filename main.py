@@ -110,7 +110,7 @@ def bialka(sciezka):
                     except:
                         bledy.append(f'Blad w bialku {i} ')
                         
-                    os.chdir("/mnt/archive/Cicuta_serwer/pysz/cpdatabase/genbank")
+                    os.chdir(sciezka)
             print(f'Zakonczono dzialania z plikiem {i}')
     print(f'Zakonczono dzialania z wszystkimi plikami')
     print("Lista bledow: ")
