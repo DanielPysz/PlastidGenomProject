@@ -3,6 +3,8 @@ import numpy as np
 import argparse
 import os
 from Bio import Entrez, SeqIO
+from Bio.Blast import NCBIWWW
+from Bio.Blast import NCBIXML
 Entrez.email = "danpysz@gmail.com"
 parser = argparse.ArgumentParser(description='convert json to dataframe')
 
@@ -45,13 +47,13 @@ def docelowy(df_n_1, df_n_2, lst_1, lst_2, index1, index2):
     #print(baza)
     return baza
 
-def dodanie_df(csv, baza):
+def dodanie_df(csv, baza):                  #dodawanie bazy od Oli
     od_oli = pd.read_csv(csv)
     od_oli = od_oli.drop("Unnamed: 0", axis=1)
     cala = pd.concat([baza, od_oli], ignore_index=True)
     return cala
 
-def tworzenie_pliku_genbank(numer):
+def tworzenie_pliku_genbank(numer):                       #Tworzenie plikow z calym zapisem genbank
     genbank_handle = Entrez.efetch(db="nucleotide", id=numer, rettype="gb", retmode="text")
     genbank_record = SeqIO.read(genbank_handle, "genbank")
     genome_seq = genbank_record.seq
@@ -74,13 +76,13 @@ def translacja(feature):
     print(feature.qualifiers)
 
 def pliki(cala):
-    os.chdir("/mnt/archive/Cicuta_serwer/pysz/cpdatabase/genbank")
+    os.chdir("/mnt/archive/Cicuta_serwer/pysz/cpdatabase/genbank_new")
     numery = list(cala['Numer'])
     for numer in numery:
         print(f'Tworze plik {numer}')
         tworzenie_pliku_genbank(numer)
 
-def bialka(sciezka):
+def bialka(sciezka):                        #Tworzy pliki fasta dotyczace poszczegolnych bialek
     bledy = []
     os.chdir(sciezka)
     for i in os.listdir(sciezka):
@@ -91,30 +93,92 @@ def bialka(sciezka):
                     try:
                         organism = str(record.annotations["organism"])
                         nazwa = str(list(feature.qualifiers['product'])[0])
+                        gen = str(list(feature.qualifiers['gene'])[0])
                         seq = list(feature.qualifiers['translation'])[0]
-                        fasta = str(f'>{organism}_{nazwa}\n{seq}')
+                        fasta = str(f'>{organism}_{gen}\n{seq}')
                         nazwa = nazwa.replace("/", "_")
                         if os.path.isdir(nazwa):
-                            print(f'Katalog {nazwa} istnieje')
+                            #print(f'Katalog {nazwa} istnieje')
                             os.chdir(nazwa)
-                            name = organism+"_"+nazwa
-                            with open(name, "w") as writer:
+                            with open(gen, "w") as writer:
                                 writer.write(fasta)
                         else:
-                            print(f'Tworze katalog {nazwa}')
+                            #print(f'Tworze katalog {nazwa}')
                             os.makedirs(str(nazwa))
                             os.chdir(str(nazwa))
-                            name = organism+"_"+nazwa
-                            with open(name, "w") as writer:
+                            with open(gen, "w") as writer:
                                 writer.write(fasta)
                     except:
-                        bledy.append(f'Blad w bialku {i} ')
+                        bledy.append(f'Blad w bialku {i}')
                         
-                    os.chdir(sciezka)
+                    os.chdir("/mnt/archive/Cicuta_serwer/pysz/cpdatabase/genbank")
             print(f'Zakonczono dzialania z plikiem {i}')
+
+    with open('Lista bledow', 'w') as writer:
+        for i in set(bledy):
+            writer.writelines(i)    
     print(f'Zakonczono dzialania z wszystkimi plikami')
-    print("Lista bledow: ")
-    print(bledy)
+
+def space_delete(file):                                             #Usuwa spacje z nazw fasta
+    with open(file, 'r') as file:
+        with open('output', 'w') as new_file:
+            for line in file:
+                if line.startswith('>'):
+                    new_file.write(line.replace(' ', '_'))
+                else:
+                    new_file.write(line)
+
+# mmseqs easy-cluster allFastaFiles.fasta clusterRes tmp --min-seq-id 0.3 -c 0.8 --cov-mode 1                 
+
+def clustal_create(file_name):                                      #Tworzy pliki zawierajace poszczegolne klastry z metody mmseq2
+    with open(file_name, 'r') as f:
+        lines = f.readlines()
+        for i in range(len(lines)-1):
+            if lines[i] == lines[i+1]:
+                file_basename = os.path.basename(lines[i].strip())
+                with open(file_basename, 'w') as out_file:
+                    print(f'Creating file {file_basename}')
+                    b = lines[i+1]
+                    a = i+1
+                    while b != lines[a+1]:
+                        out_file.write(b)
+                        a += 1
+                        b = lines[a]
+
+def name_change(path):
+ 
+    for i in os.listdir(path):
+        if len(os.path.basename(i).split('_')) > 1 and os.path.basename(i)[0] == ">": 
+            spl = os.path.basename(i).split('_')
+            os.rename(os.path.basename(i),spl[2:])
+            print(os.path.basename(i)[1:])
+
+def protein_name(path):
+    os.chdir(str(path))
+    for i in os.listdir(path):
+        print(os.path.basename(i))
+        with open(i, 'r') as file:
+            lines = file.readlines()
+            seq = lines[1]
+            result_handle = NCBIWWW.qblast("blastp", "nr", seq)
+            blast_record = NCBIXML.read(result_handle)
+            for alignment in blast_record.alignments:
+                for hsp in alignment.hsps:
+                    print('****Alignment****')
+                    print(alignment.title)
+    
+def test(sciezka):                        
+    bledy = []
+    os.chdir(sciezka)
+    for i in os.listdir(sciezka):
+        if i[-2:] == "gb":
+            record = SeqIO.read(i, "genbank")
+            for feature in record.features:
+                if feature.type == 'CDS':
+                    try:
+                        print(str(list(feature.qualifiers['gene'])[0]))
+                    except:
+                        print("Nie ma")
 
 #ind_ls1, df1 = read(args.file1)
 #df_n_1, lst_1, index1 = dane(ind_ls1, df1)
@@ -122,6 +186,11 @@ def bialka(sciezka):
 #df_n_2, lst_2, index2 = dane(ind_ls2, df2)
 #baza = docelowy(df_n_1, df_n_2, lst_1, lst_2, index1, index2)
 #cala = dodanie_df("out.csv", baza)
-#pliki(cala)
-bialka('/mnt/archive/Cicuta_serwer/pysz/cpdatabase/genbank')
+#print(cala)
+#bialka('/mnt/archive/Cicuta_serwer/pysz/cpdatabase/genbank_new/')
 #translacja_cala("sequence.gb")
+#space_delete('/mnt/archive/Cicuta_serwer/pysz/cpdatabase/allFastaFiles.fasta')
+#clustal_create("\\wsl.localhost\Ubuntu\home\danielpysz\PGP_0.2\clusterRes_all_seqs.fasta")
+#name_change("/mnt/archive/Cicuta_serwer/pysz/cpdatabase/mmseq_0.3_filtered/sort_mmseq")
+#protein_name("/mnt/archive/Cicuta_serwer/pysz/cpdatabase/mmseq_0.3_filtered/sort_mmseq")
+#test('/mnt/archive/Cicuta_serwer/pysz/cpdatabase/genbank_new/')
